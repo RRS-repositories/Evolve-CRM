@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { appendEnquiry, sheetsConfigured } from "@/lib/sheets";
 
 /* Enquiry handler.
  *
@@ -70,30 +71,50 @@ export async function POST(request) {
     submitted: new Date().toISOString(),
   };
 
-  const endpoint = process.env.ENQUIRY_WEBHOOK_URL;
-  if (!endpoint) {
-    /* Nothing configured. Say so plainly rather than pretending it was sent —
-       the form then offers the email fallback. */
-    console.warn("[enquire] ENQUIRY_WEBHOOK_URL is not set — enquiry not forwarded.");
+  /* Delivery is additive: every CONFIGURED destination is attempted, and the
+     enquiry counts as delivered if at least one succeeded. With nothing
+     configured this falls through to the email fallback, which is exactly what
+     the static demo did — so an unconfigured deployment is never silently
+     broken, and adding Sheets cannot change the behaviour of a site that does
+     not use it. */
+  const targets = [];
+  if (sheetsConfigured()) targets.push(["sheet", () => appendEnquiry(enquiry)]);
+  if (process.env.ENQUIRY_WEBHOOK_URL) targets.push(["webhook", () => postWebhook(enquiry)]);
+
+  if (targets.length === 0) {
+    console.warn(
+      "[enquire] no delivery configured (GOOGLE_SHEETS_LEADS_ID or ENQUIRY_WEBHOOK_URL) — falling back to email.",
+    );
     return NextResponse.json({ ok: true, delivered: false, to: TO_EMAIL });
   }
 
-  try {
-    const res = await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(enquiry),
-      signal: AbortSignal.timeout(10000),
-    });
-    if (!res.ok) throw new Error(`webhook responded ${res.status}`);
-    return NextResponse.json({ ok: true, delivered: true });
-  } catch (err) {
-    /* Log for us, stay vague for the caller — the upstream URL and its failure
-       mode are not the visitor's business. */
-    console.error("[enquire] forwarding failed:", err.message);
-    return NextResponse.json(
-      { ok: false, error: "We could not send that just now.", to: TO_EMAIL },
-      { status: 502 },
-    );
-  }
+  const results = await Promise.allSettled(targets.map(([, run]) => run()));
+  const failures = [];
+  results.forEach((r, i) => {
+    if (r.status === "rejected") failures.push(`${targets[i][0]}: ${r.reason?.message || r.reason}`);
+  });
+  const delivered = results.some((r) => r.status === "fulfilled");
+
+  /* A partial failure still logs. With Sheets alone there is no second copy,
+     so a failure that nobody sees is a lost sale — it must be noisy in the
+     server log even when the visitor is handed the email fallback. */
+  if (failures.length) console.error("[enquire] delivery failed —", failures.join(" | "));
+
+  if (delivered) return NextResponse.json({ ok: true, delivered: true });
+
+  return NextResponse.json(
+    { ok: true, delivered: false, to: TO_EMAIL },
+    { status: 200 },
+  );
+}
+
+/* Unchanged from before Sheets existed. */
+async function postWebhook(enquiry) {
+  const res = await fetch(process.env.ENQUIRY_WEBHOOK_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(enquiry),
+    signal: AbortSignal.timeout(10000),
+  });
+  if (!res.ok) throw new Error(`webhook responded ${res.status}`);
 }
