@@ -42,9 +42,10 @@ the identity.
 ### Server-rendered, deliberately
 
 Every section is a React Server Component, so the page ships as real HTML —
-that's what makes it crawlable. Only four pieces are client components, because
+that's what makes it crawlable. Only five pieces are client components, because
 only they need to be: the hero (rotating word, live KPI counters, task hopper),
-the background canvas, the cost calculator, and the sticky mobile bar.
+the background canvas, the cost calculator, the sticky mobile bar, and the
+mobile nav menu (`NavMenu`, kept separate so `Nav` itself stays server-side).
 
 ### SEO
 
@@ -66,6 +67,4 @@ with JS off.
 
 ## Known gaps, carried over from the demo
 
-- Below 820px the nav links are hidden with no hamburger menu — the demo does
-  this too, so it was matched rather than fixed. Worth a decision.
 - CTAs point at `tel:` / `mailto:` as in the demo.
