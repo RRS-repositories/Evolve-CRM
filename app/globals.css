@@ -73,7 +73,42 @@ nav .wordmark span{opacity:.45;font-weight:500}
 nav .links{display:flex;gap:26px;align-items:center;font-size:14px}
 nav .links a{color:var(--fog);text-decoration:none;transition:color .3s}
 nav .links a:hover{color:var(--bone)}
-@media(max-width:820px){nav .links a:not(.btn){display:none}}
+
+/* Mobile menu. The bar keeps only the wordmark and the primary CTA; the text
+   links and the ghost button move behind the toggle. Child combinators matter
+   here — a descendant selector would also match the panel's own links and
+   out-specify them. */
+.navmenu,.navpanel{display:none}
+.navtoggle{
+  display:flex;flex-direction:column;justify-content:center;gap:5px;
+  width:40px;height:40px;padding:0 10px;background:none;border:0;cursor:pointer;
+}
+.navtoggle span{display:block;height:1.5px;border-radius:2px;background:var(--bone);transition:transform .28s,opacity .2s}
+.navtoggle[aria-expanded="true"] span:nth-child(1){transform:translateY(6.5px) rotate(45deg)}
+.navtoggle[aria-expanded="true"] span:nth-child(2){opacity:0}
+.navtoggle[aria-expanded="true"] span:nth-child(3){transform:translateY(-6.5px) rotate(-45deg)}
+@keyframes navpanel-in{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+@media(max-width:820px){
+  nav > .links > a:not(.btn),nav > .links > .btn.ghost{display:none}
+  nav .links{gap:12px}
+  .navmenu{display:block}
+  /* Pull the bars flush with the 5vw gutter, past the button's tap padding. */
+  .navtoggle{margin-left:-10px}
+  /* Absorbs the free space so the wordmark stays beside the toggle rather
+     than being centred by the bar's space-between. */
+  nav .wordmark{margin-right:auto}
+  .navpanel.open{
+    display:flex;flex-direction:column;position:absolute;top:100%;left:0;right:0;
+    padding:4px 5vw 16px;background:#f6fbf8;
+    border-bottom:1px solid rgba(12,42,35,.1);box-shadow:0 18px 40px rgba(12,42,35,.1);
+    animation:navpanel-in .22s ease both;
+  }
+  nav .navpanel a{
+    padding:14px 2px;font-size:16px;color:var(--fog);text-decoration:none;
+    border-top:1px solid rgba(12,42,35,.08);
+  }
+  nav .navpanel a:first-child{border-top:0}
+}
 
 /* buttons */
 .btn{
