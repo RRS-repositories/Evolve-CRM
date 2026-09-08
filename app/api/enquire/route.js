@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { emailConfigured, sendEnquiryEmail } from "@/lib/mailer";
 import { appendEnquiry, sheetsConfigured } from "@/lib/sheets";
 
 /* Enquiry handler.
@@ -12,8 +13,9 @@ import { appendEnquiry, sheetsConfigured } from "@/lib/sheets";
  *   - Client-side validation is a courtesy to the user, not a control. Whatever
  *     the browser sends is re-checked below before anything is forwarded.
  *
- * Configure ENQUIRY_WEBHOOK_URL (n8n, Make, Zapier, Formspree…) to capture
- * enquiries. With nothing configured the route reports `delivered: false` and
+ * Configure any of ENQUIRY_EMAIL_TO (+ SMTP_*), GOOGLE_SHEETS_LEADS_ID, or
+ * ENQUIRY_WEBHOOK_URL (n8n, Make, Zapier, Formspree…) to capture enquiries.
+ * With nothing configured the route reports `delivered: false` and
  * the form falls back to a pre-filled email, exactly as the demo did — so the
  * page is never silently broken in a fresh checkout.
  */
@@ -78,12 +80,13 @@ export async function POST(request) {
      broken, and adding Sheets cannot change the behaviour of a site that does
      not use it. */
   const targets = [];
+  if (emailConfigured()) targets.push(["email", () => sendEnquiryEmail(enquiry)]);
   if (sheetsConfigured()) targets.push(["sheet", () => appendEnquiry(enquiry)]);
   if (process.env.ENQUIRY_WEBHOOK_URL) targets.push(["webhook", () => postWebhook(enquiry)]);
 
   if (targets.length === 0) {
     console.warn(
-      "[enquire] no delivery configured (GOOGLE_SHEETS_LEADS_ID or ENQUIRY_WEBHOOK_URL) — falling back to email.",
+      "[enquire] no delivery configured (ENQUIRY_EMAIL_TO, GOOGLE_SHEETS_LEADS_ID or ENQUIRY_WEBHOOK_URL) — falling back to email.",
     );
     return NextResponse.json({ ok: true, delivered: false, to: TO_EMAIL });
   }
