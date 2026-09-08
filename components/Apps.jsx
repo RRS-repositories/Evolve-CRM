@@ -53,7 +53,7 @@ export default function Apps() {
         ))}
       </div>
       <div className="wire reveal">ALL WIRED TO THE SAME RECORD — UPDATES FLOW BOTH WAYS, IN REAL TIME</div>
-      <div className="vergrid reveal" id="vergrid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16, marginTop: 26 }}>
+      <div className="vergrid reveal" id="vergrid">
         {TECH.map((t) => <Card key={t.h} item={t} className="acard" />)}
       </div>
       <div className="usedby reveal">
